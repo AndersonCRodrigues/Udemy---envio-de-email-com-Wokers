@@ -60,11 +60,12 @@ services:
       - fila
     depends_on:
       - queue
+      - app
 
 volumes:
   dados:
 
-  networks:
+networks:
   banco:
   web:
   fila:

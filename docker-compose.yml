@@ -1,11 +1,17 @@
 version: '3'
-
+volumes:
+  dados:
+networks:
+  banco:
+  web:
+  fila:
 services:
   db:
     image: postgres:9.6
     environment:
       POSTGRES_DB: "db"
       POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_PASSWORD: "nova senha"
     volumes:
       # Volume dos dados
       - dados:/var/lib/postgresql/data
@@ -14,28 +20,26 @@ services:
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - banco
-
   frontend:
-    image: nginx
+    image: nginx:1.13
     volumes:
-    # Site
-    - ./web:/usr/share/nginx/html/
-    # Configuração do proxy reverso
-    - ./nginx/default.conf:/etc/nginx/conf.d/default/conf
+      # Site
+      - ./web:/usr/share/nginx/html/
+      # Configuração do proxy reverso
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     ports:
       - 80:80
     networks:
       - web
     depends_on:
       - app
-
   app:
-    image: python:3.6
+    build: app
     volumes:
       # Aplicação
       - ./app:/app
     working_dir: /app
-    command: bash ./app.sh
+    command: sender.py
     networks:
       - banco
       - web
@@ -43,29 +47,20 @@ services:
     depends_on:
       - db
       - queue
-
+    environment:
+      - DB_NAME=abc_sender
   queue:
     image: redis:3.2
     networks:
       - fila
-
   worker:
-    image: python:3.6
+    build: worker
     volumes:
       # Worker
       - ./worker:/worker
     working_dir: /worker
-    command: bash ./app.sh
+    command: worker.py
     networks:
       - fila
     depends_on:
       - queue
-      - app
-
-volumes:
-  dados:
-
-networks:
-  banco:
-  web:
-  fila:
